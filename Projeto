@@ -1,0 +1,493 @@
+:- [codigo_comum].
+
+% TAD - Espaco
+
+/* Construtor */
+
+faz_espaco(S, V, espaco(S, V)).
+
+/* Seletores */
+
+vars_espaco(espaco(_, V), V).
+soma_espaco(espaco(S, _), S).
+
+% TAD - Combinacao
+
+/* Construtor */
+
+faz_comb(Pos, Num, (Pos, Num)).
+
+/* Seletores */
+
+pos_comb((Pos, _), Pos).
+num_comb((_, Num), Num).
+
+%----------------------------------------------------------------------------------------------%
+
+% FUNCOES AUXILIARES
+
+% until_nonvar/2
+
+/* until_nonvar(L1, L2), em que L1 e uma lista, significa que L2 e a lista
+ordenada de elementos de L1 que sao variaveis ate ser encontrado uma
+nao variavel. */
+
+until_nonvar(L1, L2) :- until_nonvar(L1, [], L2), !.
+
+until_nonvar([H | T], Acc, L2) :- 
+var(H),
+append(Acc, [H], Acc_new), 
+until_nonvar(T, Acc_new, L2).
+
+until_nonvar([H | _], Acc, L2) :-
+nonvar(H),
+until_nonvar([], Acc, L2).
+
+until_nonvar([], Acc, Acc).
+
+%----------------------------------------------------------------------------------------------%
+
+% get_index/3
+
+/* get_index(Ind, L, EL), em que L e um lista e El e um elemento da mesma,
+significa que Ind e a posicao onde o elemento El se encontra na lista L. */
+
+get_index(Ind, L, El) :- get_index(Ind, L, 1, El).
+
+get_index(Ind, [H | _], Ind, El) :- El == H, !.
+get_index(Ind, [_ | T], Acc, El) :- Acc_new is Acc + 1, get_index(Ind, T, Acc_new, El).
+
+%----------------------------------------------------------------------------------------------%
+
+% my_member/2
+
+/* my_member(El, L), em que L e uma lista, significa que El e um elemento 
+da lista L. */
+
+my_member(El, [H | _]) :- El == H, !.
+my_member(El, [_ | T]) :- my_member(El, T).
+
+%----------------------------------------------------------------------------------------------%
+
+% first_common/3
+
+/* first_common(L1, L2, Ind), em que L1 e L2 sao listas, significa que Ind
+e a posicao, na lista L2, do primeiro elemento comum entre a lista L1 e a lista L2. */
+
+first_common(L1, L2, Ind) :- first_common(L1, L2, 1, Ind), !.
+
+first_common(L1, [H | _], Ind, Ind) :- 
+bagof(_, X^(member(X, L1), X == H), _).
+
+first_common(L1, [_ | T], Acc, Ind) :-
+Acc_new is Acc + 1,
+first_common(L1, T, Acc_new, Ind).
+
+first_common(_, [], _, _) :- false.
+
+%----------------------------------------------------------------------------------------------%
+
+% remove_el/3
+
+/* remove_el(L1, El, L2), em que L1 e uma lista e El e um elemento da mesma,
+significa que L2 e o resultado de eliminar todos os elementos El da lista L1. */
+
+remove_el(L1, El, L2) :- remove_el(L1, El, [], L2).
+
+remove_el([H | T], El, Aux, L) :- 
+H \== El, 
+append(Aux, [H], Aux_new), 
+remove_el(T, El, Aux_new, L).
+
+remove_el([_ | T], El, Aux, L) :- remove_el(T, El, Aux, L).
+
+remove_el([], _, Aux, Aux).
+
+%----------------------------------------------------------------------------------------------%
+
+% l_occ/3
+
+/* l_occ(LL, L2, N), em que LL e uma lista de listas e L2 e uma lista membro de LL,
+significa que N e o numero de ocorrencias da lista L2 na lista LL. */
+
+l_occ(LL, L, N) :-
+findall(1, member(L, LL), AuxL),
+length(AuxL, N).
+
+%----------------------------------------------------------------------------------------------%
+
+% split_list_until/4
+
+/* split_list_until(El, L, L1, L2), em que El e um elemento da lista L, significa que
+L1 e L2 sao listas resultantes da divisao da lista L ate ao elemento El.
+L1 e a parte antes do elemento El ser encontrado e L2 a parte restante. */
+
+split_list_until(El, L, L1, L2) :- split_list_until(El, L, [], L1, L2), !.
+
+split_list_until(El, [H | T], Aux, Aux, T) :- El == H.
+split_list_until(El, [H | T], Aux, L1, L2) :- 
+append(Aux, [H], Aux_new), 
+split_list_until(El, T, Aux_new, L1, L2).
+
+split_list_until(_, [], Aux, Aux, _).
+
+%----------------------------------------------------------------------------------------------%
+
+% include/2
+
+/* include(L1, L2), em que L1 e L2 sao listas, significa que todos os elementos que nao sao
+variaveis da lista L1 sao tambem elementos da lista L2 na mesma posicao. */
+
+include(L1, L2) :- include(L1, L1, L2), !.
+
+include([H | T], L1, L2) :- 
+nonvar(H), 
+get_index(Ind, L1, H),
+get_index(Ind, L2, H),
+include(T, L1, L2).
+
+include([H | T], L1, L2) :-
+var(H),
+include(T, L1, L2).
+
+include([], _, _).
+
+%----------------------------------------------------------------------------------------------%
+
+% any_occ/2
+
+/* any_occ(El, LL), em que El e um inteiro e LL e uma lista de listas de inteiros, significa que
+o elemento El aparece pelo menos uma vez em alguma das listas da lista LL. */
+
+any_occ(El, [L | _]) :- member(El, L), !.
+any_occ(El, [_ | LL]) :- any_occ(El, LL).
+
+
+%----------------------------------------------------------------------------------------------%
+
+% max_occ/2
+
+/* max_occ(L, N), em que L e uma lista de pares [Occ, P], significa que N e o maior Occ de
+todos os pares. */
+max_occ(L, N) :- max_occ(L, 0, N).
+
+max_occ([[Occ, _] | T], Aux, N) :- Occ > Aux, max_occ(T, Occ, N).
+max_occ([_ | T], Aux, N) :- max_occ(T, Aux, N). 
+
+max_occ([], Aux, Aux).
+
+%----------------------------------------------------------------------------------------------%
+
+% 3.1.1 combinacoes_soma/4
+
+/* combinacoes_soma(N, Els, Soma, Combs), em que N e um inteiro,
+ELs e uma lista de inteiros, e Soma e um inteiro, significa
+que Combs e a lista ordenada cujos elementos sao as combinacoes
+N a N, dos elementos de Els cuja soma e Soma. */
+
+combinacoes_soma(N, Els, Soma, Combs) :-
+findall(Comb, (combinacao(N, Els, Comb), sum_list(Comb, X), X =:= Soma), Combs).
+
+
+% 3.1.2 permutacoes_soma/4
+
+/* permutacoes_soma(N, ELs, Soma, Perms), em que N e um inteiro, Els
+e uma lista de inteiros, e Soma e inteiro, significa que Perms e a
+lista ordenada cujos elementos sao as permutacoes das combinacoes
+N a N, dos elementos de Els cuja soma e Soma. */
+
+permutacoes_soma(N, Els, Soma, Perms) :-
+combinacoes_soma(N, Els, Soma, Combs),
+setof(Perm, Comb^(member(Comb, Combs), permutation(Perm, Comb)), Perms).
+
+
+% 3.1.3 espaco_fila/2
+
+/* espaco_fila(Fila, Esp, H_V), em que Fila e uma fila (linha ou coluna) de um 
+puzzle e H_V e um dos atomos h ou v, conforme se trate de uma fila horizontal 
+ou vertical, respectivamente, significa que Esp e um espaco de Fila. */
+
+espaco_fila(Fila, Esp, h) :-
+espaco_fila_aux(Fila, Lst_Esp, 2),
+!,
+member(Esp, Lst_Esp).
+
+espaco_fila(Fila, Esp, v) :-
+espaco_fila_aux(Fila, Lst_Esp, 1),
+!,
+member(Esp, Lst_Esp).
+
+
+espaco_fila_aux(Fila, Lst_Esp, Ind) :- espaco_fila_aux(Fila, [], Lst_Esp, Ind).
+
+espaco_fila_aux([H | T], Aux, Lst_Esp, Ind) :-
+var(H),
+espaco_fila_aux(T, Aux, Lst_Esp, Ind).
+
+espaco_fila_aux([_ | T], Aux, Lst_Esp, Ind) :-
+until_nonvar(T, Vars),
+Vars == [],
+espaco_fila_aux(T, Aux, Lst_Esp, Ind).
+
+espaco_fila_aux([H | T], Aux, Lst_Esp, Ind) :-
+until_nonvar(T, Vars),
+nth1(Ind, H, Soma),
+faz_espaco(Soma, Vars, Esp),
+append(Aux, [Esp], Aux_new),
+espaco_fila_aux(T, Aux_new, Lst_Esp, Ind).
+
+espaco_fila_aux([], Aux, Aux, _).
+
+
+% 3.1.4 espacos_fila/2
+
+/* espacos_fila(H_V, Fila, Espacos), em que Fila e uma fila (linha ou coluna) de
+uma grelha e e H_V e um dos atomos h ou v, significa que Espacos e a lista de todos os
+espacos de Fila, da esquerda para a direita. */
+
+espacos_fila(H_V, Fila, Espacos) :-
+bagof(Espaco, espaco_fila(Fila, Espaco, H_V), Espacos), !.
+
+espacos_fila(_, _, Espacos) :- 
+Espacos = [].
+
+
+% 3.1.5 espacos_puzzle/2
+
+/* espacos_puzzle(Puzzle, Espacos), em que Puzzle e um puzzle, significa que
+Espacos e a lista de espacos de Puzzle. */
+
+espacos_puzzle(Puzzle, Espacos) :- 
+bagof(EspH, (Fila, EspsH)^(member(Fila, Puzzle), espacos_fila('h', Fila, EspsH), EspsH \== [], member(EspH, EspsH)), EspacosN), 
+mat_transposta(Puzzle, PuzzleT),
+bagof(EspV, (Fila, EspsV)^(member(Fila, PuzzleT), espacos_fila('v', Fila, EspsV), EspsV \== [], member(EspV, EspsV)), EspacosT),
+append(EspacosN, EspacosT, Espacos).
+
+
+% 3.1.6 espacos_com_posicoes_comuns/3
+
+/* espacos_com_posicoes_comuns(Espacos, Esp, Esps_com), em que Espacos
+e uma lista de espacos e Esp e um espaco, significa que Esps_com e a lista de espacos
+com variaveis em comum com Esp, exceptuando Esp. */
+
+espacos_com_posicoes_comuns(Espacos, Esp, Esps_com) :-
+vars_espaco(Esp, Vars1),
+bagof(Esp2, (Vars2, Esp2, Var2)^(member(Esp2, Espacos), vars_espaco(Esp2, Vars2), member(Var2, Vars2), my_member(Var2, Vars1)), Esps_com_i),
+remove_el(Esps_com_i, Esp, Esps_com), !.
+
+
+% 3.1.7 permutacoes_soma_espacos/2
+
+/* permutacoes_soma_espacos(Espacos, Perms_soma), em que Espacos e uma
+lista de espacos, significa que Perms_soma e a lista de listas de 2 elementos, em que
+o 1o elemento e um espaco de Espacos e o 2o e a lista ordenada de permutacoes cuja
+soma e igual a soma do espaco. */
+
+permutacoes_soma_espacos(Espacos, Perms_soma) :- permutacoes_soma_espacos(Espacos, [], Perms_soma).
+
+permutacoes_soma_espacos([H | T], Aux, Perms_soma) :-
+vars_espaco(H, Vars),
+soma_espaco(H, Soma),
+length(Vars, Len),
+permutacoes_soma(Len, [1,2,3,4,5,6,7,8,9], Soma, Perms),
+append(Aux, [[H | [Perms]]], Aux_new),
+permutacoes_soma_espacos(T, Aux_new, Perms_soma).
+
+permutacoes_soma_espacos([], Aux, Aux).
+
+
+% 3.1.8 permutacao_possivel_espaco/4
+
+/* permutacao_possivel_espaco(Perm, Esp, Espacos, Perms_soma), em que
+Perm e uma permutacao, Esp e um espaco, Espacos e uma lista de espacos, e
+Perms_soma e uma lista de listas tal como obtida pelo predicado anterior, significa que
+Perm e uma permutacao possivel para o espaco Esp. */
+
+permutacao_possivel_espaco(Perm, Esp, Espacos, Perms_soma) :-
+espacos_com_posicoes_comuns(Espacos, Esp, Esps_com),
+get_index(IndEsp, Espacos, Esp),
+nth1(IndEsp, Perms_soma, [_, Perms1]),
+vars_espaco(Esp, Vars1),
+findall(Perm1, (member(E2, Esps_com), vars_espaco(E2, Vars2), first_common(Vars2, Vars1, Ind), get_index(IndE2, Espacos, E2), nth1(IndE2, Perms_soma, [_, Perms2]), member(Perm1, Perms1), nth1(Ind, Perm1, Num), any_occ(Num, Perms2)), Perms_i),
+setof(P, member(P, Perms_i), Perms_sem_rep),
+findall([Occ, P], (member(P, Perms_sem_rep), l_occ(Perms_i, P, Occ)), Pares),
+max_occ(Pares, Max_occ),
+findall(P, member([Max_occ, P], Pares), Perms),
+!,
+member(Perm, Perms).
+
+
+
+% 3.1.9 permutacoes_possiveis_espaco/4
+
+/* permutacoes_possiveis_espaco(Espacos, Perms_soma, Esp, Perms_poss), em que 
+Espacos e uma lista de espacos, Perms_soma e uma listade listas tal como obtida pelo 
+predicado permutacoes_soma_espacos, e Esp e um espaco, significa que Perms_poss e uma 
+lista de 2 elementos em que o primeiro e a lista de variaveis de Esp e o segundo e a 
+lista ordenada de permutacoes possiveis para o espaco Esp. */
+
+permutacoes_possiveis_espaco(Espacos, Perms_soma, Esp, Perms_poss) :-
+findall(Perm, permutacao_possivel_espaco(Perm, Esp, Espacos, Perms_soma), Perms),
+vars_espaco(Esp, Vars),
+sort(Perms, Perms_sorted),
+append([Vars], [Perms_sorted], Perms_poss).
+
+
+% 3.1.10 permutacoes_possiveis_espacos/2
+
+/* permutacoes_possiveis_espacos(Espacos, Perms_poss_esps), em que Espacos e uma 
+lista de espacos, significa que Perms_poss_esps e a lista de permutacoees possiveis. */
+
+permutacoes_possiveis_espacos(Espacos, Perms_poss_esps) :-
+permutacoes_soma_espacos(Espacos, Perms_soma),
+bagof(Perms_poss, (Esp)^(member(Esp, Espacos), permutacoes_possiveis_espaco(Espacos, Perms_soma, Esp, Perms_poss)), Perms_poss_esps).
+
+
+% 3.1.11 numeros_comuns/2
+
+/* numeros_comuns(Lst_Perms, Numeros_comuns), em que Lst_Perms e uma lista de
+permutacoes, significa que Numeros_comuns e uma lista de pares (pos, numero),
+significando que todas as listas de Lst_Perms contem o numero numero na posicao pos. */
+
+numeros_comuns(Lst_perms, Numeros_comuns) :-
+length(Lst_perms, Len),
+nth1(1, Lst_perms, Perm1),
+findall(Comb, (nth1(Ind, Perm1, N), member(Perm2, Lst_perms), nth1(Ind, Perm2, N), faz_comb(Ind, N, Comb)), Combs),
+setof(Comb, member(Comb, Combs), Combs_sem_rep),
+findall(Comb, (member(Comb, Combs_sem_rep), l_occ(Combs, Comb, N), N == Len), Numeros_comuns).
+
+
+% 3.1.12 atribui_comuns/1
+
+/* atribui_comuns(Perms_Possiveis), em que Perms_Possiveis e uma lista de permutacoes 
+possiveis, actualiza esta lista atribuindo a cada espaco numeros comuns a todas
+as permutacoes possiveis para esse espaco. */
+
+atribui_comuns([[Vars, Perms] | T]) :-
+numeros_comuns(Perms, Combs),
+atribui(Vars, Combs),
+atribui_comuns(T), !.
+
+atribui_comuns([]).
+
+
+atribui(Vars, [Comb | T]) :-
+pos_comb(Comb, Pos),
+num_comb(Comb, Num),
+nth1(Pos, Vars, Num),
+atribui(Vars, T).
+
+atribui(_, []).
+
+
+% 3.1.13 retira_impossiveis/2
+
+/* retira_impossiveis(Perms_Possiveis, Novas_Perms_Possiveis), em que Perms_Possiveis
+e uma lista de permutacoes possiveis, significa que Novas_Perms_Possiveis e o resultado 
+de tirar permutacoes impossiveis de Perms_Possiveis. */
+
+retira_impossiveis(Perms_possiveis, Novas_perms_possiveis) :- retira_impossiveis(Perms_possiveis, [], Novas_perms_possiveis), !.
+
+retira_impossiveis([[Vars, Perms] | T], Aux, Novas_perms_possiveis) :-
+setof(Perm, (member(Perm, Perms), include(Vars, Perm)), Perms_poss),
+append(Aux, [[Vars, Perms_poss]], Aux_new),
+retira_impossiveis(T, Aux_new, Novas_perms_possiveis).
+
+retira_impossiveis([H | T], Aux, Novas_perms_possiveis) :-
+append(Aux, [H], Aux_new),
+retira_impossiveis(T, Aux_new, Novas_perms_possiveis).
+
+retira_impossiveis([], Aux, Aux).
+
+
+% 3.1.14 simplifica/2
+
+/* simplifica(Perms_Possiveis, Novas_Perms_Possiveis), em que Perms_Possiveis e uma lista 
+de permutacoes possiveis, significa que Novas_Perms_Possiveis e o resultado de simplificar 
+Perms_Possiveis, aplicando-lhe os predicados atribui_comuns e retira_impossiveis ate nao haver 
+mais alteracoes. */
+
+simplifica(Perms_possiveis, Novas_perms_possiveis) :-
+atribui_comuns(Perms_possiveis),
+retira_impossiveis(Perms_possiveis, Perms_possiveis_new), 
+Perms_possiveis \== Perms_possiveis_new,
+simplifica(Perms_possiveis_new, Novas_perms_possiveis), !.
+
+simplifica(Perms_possiveis, Perms_possiveis) :- atribui_comuns(Perms_possiveis).
+
+
+% 3.1.15 inicializa/2
+
+/* inicializa(Puzzle, Perms_Possiveis), em que Puzzle e um puzzle, significa
+que Perms_Possiveis e a lista de permutacoes possiveis simplificada para Puzzle. */
+
+inicializa(Puzzle, Poss_possiveis) :-
+espacos_puzzle(Puzzle, Espacos),
+permutacoes_possiveis_espacos(Espacos, Perms_poss_i),
+simplifica(Perms_poss_i, Poss_possiveis).
+
+
+% 3.2.1 escolhe_menos_alternativas/2
+
+/* escolhe_menos_alternativas(Perms_Possiveis, Escolha), em que
+Perms_Possiveis e uma lista de permutacoes possiveis, significa que Escolha
+e o elemento de Perms_Possiveis (primeiro elemento da lista de permutacoes 
+possiveis do primeiro espaco cujo numero de permutacoes possiveis seja o menor, maior que 1).
+Se todos os espacos em Perms_Possiveis tiverem associadas listas de
+permutacoes unitarias, o predicado devolve 'falso'. */
+
+escolhe_menos_alternativas(Perms_possiveis, Escolha) :-
+findall(Len, (member([_, Perms], Perms_possiveis), length(Perms, Len), Len > 1), Lens),
+min_list(Lens, Len_min),
+bagof([Vars, Perms], (member([Vars, Perms], Perms_possiveis), length(Perms, Len_min)), [Escolha | _]).
+
+
+% 3.2.2 experimenta_perm/3
+
+/* A chamada experimenta_perm(Escolha, Perms_Possiveis,
+Novas_Perms_Possiveis), em que Perms_Possiveis e uma lista de permutacoes possiveis, 
+e Escolha e um dos seus elementos (escolhido pelo predicado anterior), segue os seguintes passos:
+1. Sendo Esp e Lst_Perms o espaco e a lista de permutacoes de Escolha, respectivamente, 
+escolhe uma permutacao de Lst_Perms, Perm, utilizando o predicado member.
+2. Unifica Esp com Perm.
+3. Novas_Perms_Possiveis e o resultado de substituir, em Perms_Possiveis, o
+elemento Escolha pelo elemento [Esp, [Perm]]. */
+
+experimenta_perm(Escolha, Perms_possiveis, Novas_perms_possiveis) :-
+split_list_until(Escolha, Perms_possiveis, Perms1, Perms2),
+Escolha = [Esp, Perms],
+member(Perm_i, Perms),
+Esp = Perm_i,
+append(Perms1, [[Esp, [Perm_i]]], Half),
+append(Half, Perms2, Novas_perms_possiveis).
+
+
+% 3.2.3 resolve_aux/2
+
+/* resolve_aux(Perms_Possiveis, Novas_Perms_Possiveis), em que
+Perms_Possiveis e uma lista de permutacoes possiveis, significa que
+Novas_Perms_Possiveis e o resultado de aplicar os seguintes passos a Perms_Possiveis
+enquanto existirem espacos com um numero de permutacoes possiveis superior a 1:
+1. Escolher o espaco segundo o predicado escolhe_menos_alternativas.
+2. Aplicar o predicado experimentar_perm a Perms_possiveis.
+3. Simplificar a Perms_possiveis. */
+
+resolve_aux(Ps, Ps) :-
+forall(member([_, Perms], Ps), length(Perms, 1)).
+
+resolve_aux(Ps, N_ps) :-
+escolhe_menos_alternativas(Ps, Escolha),
+experimenta_perm(Escolha, Ps, Ps2),
+simplifica(Ps2, Ps3),
+resolve_aux(Ps3, N_ps), !.
+
+
+% 3.3.1 resolve/1
+
+/* resolve(Puz), em que Puz e um puzzle, resolve esse puzzle, isto e, apos a invocacao
+deste predicado a grelha de Puz tem todas as variaveis substituidas por numeros que
+respeitam as restricoes Puz. */
+
+resolve(Puz) :-
+inicializa(Puz, Perms_possiveis),
+resolve_aux(Perms_possiveis, _).
