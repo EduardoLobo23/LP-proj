@@ -1,1 +1,1 @@
-# LP-proj
+Projeto de LP
